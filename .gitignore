@@ -47,3 +47,5 @@ next-env.d.ts
 serviceAccountKey.json
 *serviceAccountKey*.json
 .env
+**/public/fallback-*.js
+**/public/fallback-*.js.map

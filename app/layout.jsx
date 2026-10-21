@@ -4,7 +4,6 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/ui/theme-provider";
-import Script from "next/script";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -54,10 +53,6 @@ export default function RootLayout({ children }) {
             <main>{children}</main>
             <Toaster />
           </ThemeProvider>
-          <Script
-            id="razorpay-checkout-js"
-            src="https://checkout.razorpay.com/v1/checkout.js"
-          />
         </body>
       </html>
     </ClerkProvider>
