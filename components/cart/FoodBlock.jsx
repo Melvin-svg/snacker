@@ -8,6 +8,7 @@ import { MdAddBox } from "react-icons/md";
 import { MdIndeterminateCheckBox } from "react-icons/md";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "../ui/use-toast";
+import { normalizeImageUrl } from "@/lib/utils";
 
 const FoodBlock = ({ id, count, triggerReload, setTriggerReload }) => {
   const [product, setProduct] = useState({});
@@ -77,7 +78,7 @@ const FoodBlock = ({ id, count, triggerReload, setTriggerReload }) => {
         <div className="flex justify-between">
           <div className="flex items-center gap-3">
             <Image
-              src={product.imgSrc}
+              src={normalizeImageUrl(product.imgSrc)}
               width={80}
               height={80}
               className="h-14 w-auto rounded-lg"

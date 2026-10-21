@@ -6,7 +6,7 @@ import { toPng } from "html-to-image";
 import ViewDetails from "./ViewDetails";
 import { GoClockFill } from "react-icons/go";
 import { FaCalendarAlt } from "react-icons/fa";
-import { formatDateToYYYYMMDD, formatTimeTo12Hour } from "@/helpers/GetOrders";
+import { formatDateToYYYYMMDD, formatTimeTo12Hour } from "@/lib/utils";
 
 const OrderBlock = ({ id, amount, timeStamp, status, products }) => {
   const [date, setDate] = useState("");

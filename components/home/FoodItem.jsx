@@ -15,6 +15,7 @@ import { Inter } from "next/font/google";
 import usePurchaseProduct from "@/hooks/usePurchaseProduct";
 import { useToast } from "../ui/use-toast";
 import Button from "../shared/Button";
+import { normalizeImageUrl } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -80,7 +81,7 @@ const FoodItem = ({
         transition={{ duration: 0.2 }}
       >
         <Image
-          src={imgSrc}
+          src={normalizeImageUrl(imgSrc)}
           width={200}
           height={200}
           className="h-full w-auto rounded-md"
@@ -135,7 +136,7 @@ const FoodItem = ({
                 transition={{ duration: 0.2 }}
               >
                 <Image
-                  src={imgSrc}
+                  src={normalizeImageUrl(imgSrc)}
                   fill
                   className="object-cover"
                   alt={name}

@@ -523,7 +523,7 @@ export default function AdminDrawer({ isOpen, onClose, onRefreshData }) {
                     <label className="text-xs text-neutral-300 block mb-1">Image URL</label>
                     <input
                       type="url"
-                      placeholder="https://images.unsplash.com/..."
+                      placeholder="Google Drive link or https://..."
                       value={form.imgSrc}
                       onChange={(e) => setForm({ ...form, imgSrc: e.target.value })}
                       className="w-full bg-dark-200 rounded-lg p-2.5 text-sm border border-neutral-700 focus:border-yellow-400 outline-none"
