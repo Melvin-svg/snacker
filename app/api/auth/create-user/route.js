@@ -39,10 +39,14 @@ export async function GET(req) {
     }
 
     await setDoc(doc(db, "users", userId), {
-      name: user.username,
+      name:
+        user.username ||
+        user.firstName ||
+        user.emailAddresses?.[0]?.emailAddress?.split("@")[0] ||
+        "User",
       userId: user.id,
       credit: 0,
-      timeStamp: serverTimestamp()
+      timeStamp: serverTimestamp(),
     });
 
     return new NextResponse(null, {

@@ -1,11 +1,21 @@
 import { db } from "@/firebase/config";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { NextResponse } from "next/server";
-import { nanoid } from 'nanoid'
+import { nanoid } from "nanoid";
+import { auth } from "@clerk/nextjs/server";
 
 export async function POST(req) {
+  const { userId: sessionUserId } = auth();
+  if (!sessionUserId) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 },
+    );
+  }
+
   const data = await req.json();
-  const { products, userId, amount } = data;
+  const { products, amount } = data;
+  const userId = sessionUserId;
   const orderId = nanoid();
   try {
     await setDoc(doc(db, "orders", orderId.toString()), {

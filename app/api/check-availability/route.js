@@ -1,10 +1,20 @@
 import { db } from "@/firebase/config";
 import { doc, runTransaction } from "firebase/firestore";
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 
 export async function POST(req) {
+  const { userId: sessionUserId } = auth();
+  if (!sessionUserId) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 },
+    );
+  }
+
   const data = await req.json();
-  const { products, userId, amount } = data;
+  const { products, amount } = data;
+  const userId = sessionUserId;
 
   try {
     const result = await runTransaction(db, async (transaction) => {
