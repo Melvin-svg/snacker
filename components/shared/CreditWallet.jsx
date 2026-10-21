@@ -17,8 +17,7 @@ import { useToast } from "../ui/use-toast";
 import useSnackerStore from "@/hooks/useSnackerStore";
 
 const CreditWallet = () => {
-  const { updateCredit, openCreditWallet, setOpenCreditWallet } =
-    useSnackerStore();
+  const { openCreditWallet, setOpenCreditWallet } = useSnackerStore();
   const [amount, setAmount] = useState(0);
   const [loading, setLoading] = useState(false);
   const { user } = useUser();
@@ -33,33 +32,24 @@ const CreditWallet = () => {
   const handleRecharge = async () => {
     setLoading(true);
     try {
-      setTimeout(() => {
-        setOpenCreditWallet(false);
-      }, 3000);
       const res = await processPayment(amount, user);
       if (res.ok) {
-        setOpenCreditWallet(true);
-        updateCredit(amount);
+        setOpenCreditWallet(false);
         toast({
-          title: "Payment Sucessfull",
-          description: `${amount}rs have been successfully added to your wallet`,
-          className: "bg-green-500 text-white",
-        });
-      } else {
-        toast({
-          title: "Credit Updation Failed",
-          description: res.error,
-          variant: "destructive",
+          title: "Recharge Initiated",
+          description: `Complete your UPI transfer in the opened tab. Your wallet will update live.`,
+          className: "bg-blue-600 text-white",
         });
       }
     } catch (e) {
       toast({
-        title: "Payment Failed",
+        title: "Recharge Failed",
         description: e.message,
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -69,7 +59,7 @@ const CreditWallet = () => {
           <DrawerTitle>Recharge Your Wallet</DrawerTitle>
           <DrawerDescription className="text-neutral-400">
             Select a predefined amount or enter a custom amount to recharge your
-            wallet.
+            wallet points via YouPI UPI Gateway.
           </DrawerDescription>
         </DrawerHeader>
         <div className="flex flex-col items-center py-4">
@@ -106,13 +96,6 @@ const CreditWallet = () => {
           >
             {loading ? "Processing..." : "Recharge Now"}
           </Button>
-          {/* <Button
-            className="bg-primary text-black transition duration-200 hover:bg-primary disabled:bg-primary/80"
-            onClick={handleRecharge}
-            disabled={true}
-          >
-            Temporarily Stopped
-          </Button>  */}
           <DrawerClose asChild>
             <Button
               disabled={loading}

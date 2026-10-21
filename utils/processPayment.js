@@ -1,47 +1,30 @@
-import { createOrderId } from "./createOrderId";
-
 export const processPayment = async (amount, user) => {
-  return new Promise((resolve, reject) => {
-    createOrderId(amount)
-      .then((orderId) => {
-        if (!orderId) {
-          return reject(new Error("Failed to create order ID"));
-        }
+  try {
+    const response = await fetch("/api/order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount: parseFloat(amount),
+      }),
+    });
 
-        const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_API_KEY_ID,
-          amount: parseFloat(amount) * 100,
-          currency: "INR",
-          name: "Snacker",
-          description: "Vend your snacks",
-          order_id: orderId,
-          notes: {
-            userId: user.id,
-          },
-          handler: async function (response) {
-            return resolve({ ok: true, orderId });
-          },
-          prefill: {
-            name: user?.username || "",
-            email: user?.primaryEmailAddress?.emailAddress || "",
-          },
-          theme: {
-            color: "#0D0D0D",
-          },
-          retry: {
-            enabled: false,
-          },
-        };
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || "Failed to initialize payment");
+    }
 
-        const paymentObject = new window.Razorpay(options);
-        paymentObject.on("payment.failed", async function (response) {
-          return reject(new Error("Payment failed"));
-        });
-        paymentObject.open();
-      })
-      .catch(async (error) => {
-        console.error("Error creating order ID:", error.message);
-        return reject(error);
-      });
-  });
+    const data = await response.json();
+    if (data.checkoutUrl) {
+      // Open the YouPI-PG FCFS payment queue / dynamic QR window
+      window.open(data.checkoutUrl, "_blank");
+      return { ok: true, orderId: data.orderId, checkoutUrl: data.checkoutUrl };
+    }
+
+    return { ok: true, orderId: data.orderId };
+  } catch (error) {
+    console.error("Error processing payment:", error.message);
+    throw error;
+  }
 };

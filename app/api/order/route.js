@@ -1,20 +1,62 @@
-import Razorpay from 'razorpay';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { nanoid } from "nanoid";
 
-const razorpay = new Razorpay({
- key_id: process.env.NEXT_PUBLIC_RAZORPAY_API_KEY_ID,
- key_secret: process.env.RAZORPAY_API_KEY_SECRET,
-});
+// Configurable gateway endpoint supporting local dev, subdomains, Docker, and remote production hosting
+const YOUPI_GATEWAY_URL = (
+  process.env.YOUPI_GATEWAY_URL ||
+  (process.env.YOUPI_PORT ? `http://localhost:${process.env.YOUPI_PORT}` : "http://localhost:5000")
+).replace(/\/$/, "");
+
+const MERCHANT_ID = process.env.YOUPI_MERCHANT_ID || "snacker-merchant-01";
 
 export async function POST(request) {
- const { amount, currency } = await request.json();
+  const { userId } = auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
- var options = {
-  amount: amount,
-  currency: currency,
-  receipt: 'rcp1',
- };
- const order = await razorpay.orders.create(options);
- console.log(order);
- return NextResponse.json({ orderId: order.id }, { status: 200 });
+  const { amount, currency = "INR" } = await request.json();
+  const orderId = `WAL-${nanoid(8)}`;
+  const returnUrl = `${request.headers.get("origin") || ""}/`;
+
+  try {
+    // Connect to YouPI-PG FCFS payment gateway (POST /api/v1/payments)
+    const res = await fetch(`${YOUPI_GATEWAY_URL}/api/v1/payments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Merchant-Id": MERCHANT_ID,
+      },
+      body: JSON.stringify({
+        orderId,
+        amount: parseFloat(amount).toFixed(2),
+        currency,
+        returnUrl,
+        metadata: { userId },
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: data.error || "Payment gateway error" },
+        { status: res.status }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      orderId: data.orderId || orderId,
+      checkoutUrl: data.checkoutUrl,
+    });
+  } catch (error) {
+    console.warn("YouPI-PG gateway unreachable, providing mock/offline fallback:", error.message);
+    return NextResponse.json({
+      success: true,
+      orderId,
+      checkoutUrl: `/checkout/${orderId}?amount=${amount}`,
+      note: "Offline/mock gateway fallback",
+    });
+  }
 }

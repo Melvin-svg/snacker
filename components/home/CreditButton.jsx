@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { FaCreditCard } from "react-icons/fa";
 import useSnackerStore from "@/hooks/useSnackerStore";
 import { Skeleton } from "../ui/skeleton";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/firebase/config";
 import { TbSquareRoundedPlusFilled } from "react-icons/tb";
 
@@ -16,27 +16,30 @@ const CreditButton = ({ userId }) => {
   const [load, setLoad] = useState(true);
 
   useEffect(() => {
-    getCredits();
-  }, []);
-
-  const getCredits = async () => {
-    setLoad(true);
-    try {
-      const docRef = doc(db, "users", userId);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        console.log("Document data:", docSnap.data());
-        const data = docSnap.data();
-        setCredit(data.credit);
-      } else {
-        console.log("No such document!");
-      }
-    } catch (e) {
-      console.log(e.message);
+    if (!userId) {
+      setLoad(false);
+      return;
     }
-    setLoad(false);
-  };
+
+    // Realtime sync: updates wallet balance instantly when the background webhook processes
+    const unsubscribe = onSnapshot(
+      doc(db, "users", userId),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setCredit(data.credit ?? 0);
+        }
+        setLoad(false);
+      },
+      (error) => {
+        console.error("Realtime credit sync error:", error);
+        setLoad(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [userId, setCredit]);
+
   return (
     <div className="relative">
       {load ? (
