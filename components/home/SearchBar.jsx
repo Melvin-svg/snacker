@@ -2,15 +2,16 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { FiSearch } from "react-icons/fi";
 
-const SearchBar = ({ products, setProductList }) => {
+const SearchBar = ({ products = [], setProductList }) => {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    const filtered = products.filter((prod) =>
-      prod.name.toLowerCase().includes(search),
+    const list = Array.isArray(products) ? products : [];
+    const filtered = list.filter((prod) =>
+      prod.name?.toLowerCase().includes(search),
     );
     setProductList(filtered);
-  }, [search]);
+  }, [search, products]);
 
   return (
     <motion.div 

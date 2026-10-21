@@ -10,10 +10,12 @@ import { rtdb } from "@/firebase/config";
 import UpdationBlock from "./UpdationBlock";
 import { RiShoppingCartFill } from "react-icons/ri";
 import { useAuth } from "@clerk/nextjs";
+import useIsAdmin from "@/hooks/useIsAdmin";
 import Disclaimer from "./Disclaimer";
 
 const Tab = () => {
   const { userId } = useAuth();
+  const isAdmin = useIsAdmin();
   const path = usePathname();
   const { products } = useSnackerStore();
   const [hasProducts, setHasProducts] = useState(false);
@@ -24,13 +26,17 @@ const Tab = () => {
   }, [products]);
 
   useEffect(() => {
+    if (!rtdb) return;
     try {
       const starCountRef = ref(rtdb, "/onStockUpdation/status");
       onValue(starCountRef, (snapshot) => {
-        const isUpdating = snapshot.val();
+        const isUpdating = Boolean(snapshot.val());
         if (isUpdating) {
-          if (userId != process.env.NEXT_PUBLIC_TESTUSER_ID) {
+          const isCurrentAdmin = isAdmin;
+          if (!isCurrentAdmin && userId !== process.env.NEXT_PUBLIC_TESTUSER_ID) {
             setOnUpdation(true);
+          } else {
+            setOnUpdation(false);
           }
         } else {
           setOnUpdation(false);
@@ -39,7 +45,7 @@ const Tab = () => {
     } catch (error) {
       console.log(error.message);
     }
-  }, []);
+  }, [isAdmin, userId]);
 
   return (
     <div className="fixed bottom-0 left-0 flex w-full items-center justify-evenly border-t border-dark-200 bg-dark-100 p-2 py-1">

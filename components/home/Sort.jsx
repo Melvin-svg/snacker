@@ -13,18 +13,19 @@ const buttonVariants = {
   }
 };
 
-const Sort = ({ products, setProductList }) => {
+const Sort = ({ products = [], setProductList }) => {
   const [activeSort, setActiveSort] = useState("all");
 
   useEffect(() => {
+    const list = Array.isArray(products) ? products : [];
     if (activeSort !== "all") {
       setProductList(
-        products.filter((prod) => prod.category.toLowerCase() === activeSort),
+        list.filter((prod) => prod.category?.toLowerCase() === activeSort),
       );
     } else {
-      setProductList(products);
+      setProductList(list);
     }
-  }, [activeSort]);
+  }, [activeSort, products]);
 
   return (
     <motion.div 

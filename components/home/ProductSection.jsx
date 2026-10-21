@@ -41,8 +41,9 @@ const emptyStateVariants = {
   },
 };
 
-const ProductSection = ({ products }) => {
-  const [productList, setProductList] = useState(products);
+const ProductSection = ({ products = [] }) => {
+  const safeProducts = Array.isArray(products) ? products : [];
+  const [productList, setProductList] = useState(safeProducts);
   return (
     <motion.div 
       className="mt-4 flex w-full flex-col"
@@ -51,10 +52,10 @@ const ProductSection = ({ products }) => {
       animate="visible"
     >
       <motion.div variants={itemVariants}>
-        <SearchBar products={products} setProductList={setProductList} />
+        <SearchBar products={safeProducts} setProductList={setProductList} />
       </motion.div>
       <motion.div variants={itemVariants}>
-        <Sort products={products} setProductList={setProductList} />
+        <Sort products={safeProducts} setProductList={setProductList} />
       </motion.div>
       <motion.p 
         className="mt-4 text-sm italic text-primary/50"
@@ -62,7 +63,7 @@ const ProductSection = ({ products }) => {
       >
         It is recommended to place your order in front of the machine.
       </motion.p>
-      {products.length > 0 ? (
+      {safeProducts.length > 0 ? (
           <ProductList products={productList} />
       ) : (
         <motion.div 
