@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import Script from "next/script";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -32,6 +33,13 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  const youpiHost = (
+    process.env.NEXT_PUBLIC_YOUPI_GATEWAY_URL ||
+    (process.env.NEXT_PUBLIC_YOUPI_PORT
+      ? `http://localhost:${process.env.NEXT_PUBLIC_YOUPI_PORT}`
+      : "http://localhost:5000")
+  ).replace(/\/$/, "");
+
   return (
     <ClerkProvider
       appearance={{
@@ -53,6 +61,14 @@ export default function RootLayout({ children }) {
             <main>{children}</main>
             <Toaster />
           </ThemeProvider>
+          {/* YouPI-PG Sovereign In-App Modal Checkout SDK */}
+          <Script
+            id="youpi-pg-sdk"
+            src={`${youpiHost}/youpi.js`}
+            data-youpi-key={process.env.NEXT_PUBLIC_YOUPI_MERCHANT_ID || "snacker-merchant-01"}
+            data-currency="INR"
+            strategy="afterInteractive"
+          />
         </body>
       </html>
     </ClerkProvider>
