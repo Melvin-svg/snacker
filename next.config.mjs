@@ -2,9 +2,7 @@ import withPWAInit from "@ducanh2912/next-pwa";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ["firebase-admin", "@google-cloud/firestore"],
-  },
+  serverExternalPackages: ["firebase-admin", "@google-cloud/firestore"],
   images: {
     remotePatterns: [
       {

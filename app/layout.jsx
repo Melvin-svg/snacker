@@ -33,6 +33,13 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  const youpiHost = (
+    process.env.NEXT_PUBLIC_YOUPI_GATEWAY_URL ||
+    (process.env.NEXT_PUBLIC_YOUPI_PORT
+      ? `http://localhost:${process.env.NEXT_PUBLIC_YOUPI_PORT}`
+      : "http://localhost:5000")
+  ).replace(/\/$/, "");
+
   return (
     <ClerkProvider
       appearance={{
@@ -54,9 +61,13 @@ export default function RootLayout({ children }) {
             <main>{children}</main>
             <Toaster />
           </ThemeProvider>
+          {/* YouPI-PG Sovereign In-App Modal Checkout SDK */}
           <Script
-            id="razorpay-checkout-js"
-            src="https://checkout.razorpay.com/v1/checkout.js"
+            id="youpi-pg-sdk"
+            src={`${youpiHost}/youpi.js`}
+            data-youpi-key={process.env.NEXT_PUBLIC_YOUPI_MERCHANT_ID || "snacker-merchant-01"}
+            data-currency="INR"
+            strategy="afterInteractive"
           />
         </body>
       </html>
