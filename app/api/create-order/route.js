@@ -1,5 +1,4 @@
-import { db } from "@/firebase/config";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { adminDb, FieldValue } from "@/firebase/admin";
 import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { auth } from "@clerk/nextjs/server";
@@ -17,21 +16,23 @@ export async function POST(req) {
   const { products, amount } = data;
   const userId = sessionUserId;
   const orderId = nanoid();
+
   try {
-    await setDoc(doc(db, "orders", orderId.toString()), {
+    await adminDb.collection("orders").doc(orderId).set({
       userId: userId || "",
       products: products,
       amount: amount,
       status: "pending",
-      timeStamp: serverTimestamp(),
+      timeStamp: FieldValue.serverTimestamp(),
     });
+
     return NextResponse.json({
       success: true,
       orderId: orderId,
       message: "Order created successfully",
     });
   } catch (error) {
-    console.log(error);
+    console.error("Order creation error:", error);
     return NextResponse.json({
       success: false,
       error: error.message,

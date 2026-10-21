@@ -1,5 +1,4 @@
-import { db } from "@/firebase/config";
-import { doc, runTransaction } from "firebase/firestore";
+import { adminDb } from "@/firebase/admin";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
@@ -17,43 +16,42 @@ export async function POST(req) {
   const userId = sessionUserId;
 
   try {
-    const result = await runTransaction(db, async (transaction) => {
-      const userRef = doc(db, "users", userId);
+    await adminDb.runTransaction(async (transaction) => {
+      const userRef = adminDb.collection("users").doc(userId);
       const userDoc = await transaction.get(userRef);
 
-      if (!userDoc.exists()) {
+      if (!userDoc.exists) {
         throw new Error("User does not exist");
       }
 
-      const userCredits = userDoc.data().credit;
+      const userCredits = userDoc.data()?.credit ?? 0;
 
       if (userCredits < amount) {
         throw new Error("insufficientCredit");
       }
 
       // Retrieve product documents in parallel
-      const productPromises = products.map(async (product) => {
-        const productRef = doc(db, "products", product.productId);
-        const productDoc = await transaction.get(productRef);
-        return { productRef, productDoc };
-      });
+      const productRefs = products.map((product) =>
+        adminDb.collection("products").doc(product.productId)
+      );
+      const productDocs = await transaction.getAll(...productRefs);
 
-      const productDocs = await Promise.all(productPromises);
-
-      // Update actual stock
-      productDocs.forEach(({ productRef, productDoc }) => {
-        const product = products.find((p) => p.productId === productRef.id);
+      // Verify stock availability and prepare updates
+      for (const productDoc of productDocs) {
+        if (!productDoc.exists) {
+          throw new Error("insufficientStock");
+        }
+        const product = products.find((p) => p.productId === productDoc.id);
         const productData = productDoc.data();
-        const newStock = productData.stock - product.count;
+        const currentStock = productData?.stock ?? 0;
+        const newStock = currentStock - (product?.count ?? 1);
 
         if (newStock < 0) {
           throw new Error("insufficientStock");
         }
 
-        transaction.update(productRef, {
-          stock: newStock,
-        });
-      });
+        transaction.update(productDoc.ref, { stock: newStock });
+      }
 
       // Deduct credits from user
       const newCredits = userCredits - amount;
@@ -62,7 +60,6 @@ export async function POST(req) {
       });
     });
 
-    console.log("Purchase Successfull");
     return NextResponse.json({
       success: true,
       message: "Purchase Successfull",

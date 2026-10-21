@@ -1,15 +1,9 @@
-import { db, rtdb } from "@/firebase/config";
+import { adminDb, FieldValue } from "@/firebase/admin";
+import { rtdb } from "@/firebase/config";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { isAdminUser } from "@/lib/admin";
 import { DEFAULT_SNACKS } from "@/lib/seedData";
-import {
-  collection,
-  doc,
-  getDocs,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-} from "firebase/firestore";
+import { normalizeImageUrl } from "@/lib/utils";
 import { ref, set, get } from "firebase/database";
 import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
@@ -48,8 +42,8 @@ export async function GET() {
   }
 
   try {
-    // 1. Fetch all products (including 0 stock)
-    const productSnapshot = await getDocs(collection(db, "products"));
+    // 1. Fetch all products via Firebase Admin SDK (bypasses security rules safely)
+    const productSnapshot = await adminDb.collection("products").get();
     const products = [];
     productSnapshot.forEach((d) => {
       products.push({ id: d.id, ...d.data() });
@@ -58,9 +52,11 @@ export async function GET() {
     // 2. Fetch maintenance status from Realtime Database
     let maintenance = false;
     try {
-      const snap = await get(ref(rtdb, "/onStockUpdation/status"));
-      if (snap.exists()) {
-        maintenance = Boolean(snap.val());
+      if (rtdb) {
+        const snap = await get(ref(rtdb, "/onStockUpdation/status"));
+        if (snap.exists()) {
+          maintenance = Boolean(snap.val());
+        }
       }
     } catch (e) {
       console.warn("Could not read maintenance status from RTDB:", e.message);
@@ -95,10 +91,10 @@ export async function POST(req) {
 
     switch (action) {
       case "seed_products": {
-        // Seed default snack products safely
+        // Seed default snack products safely using Admin SDK
         const seeded = [];
         for (const item of DEFAULT_SNACKS) {
-          const productRef = doc(db, "products", item.id);
+          const productRef = adminDb.collection("products").doc(item.id);
           const data = {
             name: String(item.name).trim(),
             subtitle: String(item.subtitle).trim(),
@@ -106,10 +102,10 @@ export async function POST(req) {
             price: Number(item.price) || 20,
             stock: Number(item.stock) || 10,
             position: String(item.position || "A1").toUpperCase(),
-            imgSrc: String(item.imgSrc),
-            updatedAt: serverTimestamp(),
+            imgSrc: normalizeImageUrl(String(item.imgSrc)),
+            updatedAt: FieldValue.serverTimestamp(),
           };
-          await setDoc(productRef, data, { merge: true });
+          await productRef.set(data, { merge: true });
           seeded.push({ id: item.id, ...data });
         }
 
@@ -132,7 +128,7 @@ export async function POST(req) {
         }
 
         const id = nanoid(8);
-        const productRef = doc(db, "products", id);
+        const productRef = adminDb.collection("products").doc(id);
         const newProduct = {
           name: String(name).trim(),
           subtitle: String(subtitle || "").trim(),
@@ -140,13 +136,11 @@ export async function POST(req) {
           price: Math.max(1, Number(price) || 10),
           stock: Math.max(0, parseInt(stock, 10) || 0),
           position: String(position || "A1").toUpperCase().trim(),
-          imgSrc:
-            String(imgSrc || "").trim() ||
-            "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=400&auto=format&fit=crop&q=80",
-          createdAt: serverTimestamp(),
+          imgSrc: normalizeImageUrl(String(imgSrc || "").trim()),
+          createdAt: FieldValue.serverTimestamp(),
         };
 
-        await setDoc(productRef, newProduct);
+        await productRef.set(newProduct);
 
         return NextResponse.json({
           success: true,
@@ -165,9 +159,9 @@ export async function POST(req) {
         }
 
         const safeStock = Math.max(0, parseInt(newStock, 10) || 0);
-        await updateDoc(doc(db, "products", productId), {
+        await adminDb.collection("products").doc(productId).update({
           stock: safeStock,
-          updatedAt: serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         });
 
         return NextResponse.json({
@@ -179,7 +173,9 @@ export async function POST(req) {
       case "toggle_maintenance": {
         const { status } = payload || {};
         const isMaintenance = Boolean(status);
-        await set(ref(rtdb, "/onStockUpdation/status"), isMaintenance);
+        if (rtdb) {
+          await set(ref(rtdb, "/onStockUpdation/status"), isMaintenance);
+        }
 
         return NextResponse.json({
           success: true,

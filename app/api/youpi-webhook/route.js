@@ -1,5 +1,4 @@
-import { db } from "@/firebase/config";
-import { doc, runTransaction, serverTimestamp } from "firebase/firestore";
+import { adminDb, FieldValue } from "@/firebase/admin";
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 
@@ -38,25 +37,25 @@ export async function POST(req) {
     const orderId = payload.orderId;
 
     if (userId && amountInINR > 0) {
-      const userRef = doc(db, "users", userId);
-      const paymentRef = doc(db, "payments", orderId);
+      const userRef = adminDb.collection("users").doc(userId);
+      const paymentRef = adminDb.collection("payments").doc(orderId);
 
-      await runTransaction(db, async (transaction) => {
+      await adminDb.runTransaction(async (transaction) => {
         // Idempotency: prevent double credit on retried webhooks
         const paymentDoc = await transaction.get(paymentRef);
-        if (paymentDoc.exists()) return;
+        if (paymentDoc.exists) return;
 
         const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) throw new Error("User document does not exist");
+        if (!userDoc.exists) throw new Error("User document does not exist");
 
-        const currentCredit = userDoc.data().credit || 0;
+        const currentCredit = userDoc.data()?.credit || 0;
         transaction.update(userRef, { credit: currentCredit + amountInINR });
         transaction.set(paymentRef, {
           userId,
           orderId,
           amount: amountInINR,
           utr: payload.utr || "",
-          timeStamp: serverTimestamp(),
+          timeStamp: FieldValue.serverTimestamp(),
         });
       });
     }
