@@ -2,6 +2,7 @@ import { db } from "@/firebase/config";
 import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 
 export const getOrders = async (userId) => {
+  if (!userId) return [];
   try {
     let orders = [];
     const q = query(
@@ -17,8 +18,8 @@ export const getOrders = async (userId) => {
     });
     return orders;
   } catch (error) {
-    console.log(error);
-    return null;
+    console.error("Error fetching orders:", error);
+    return [];
   }
 };
 

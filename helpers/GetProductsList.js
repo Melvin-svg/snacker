@@ -12,7 +12,7 @@ export const getProductList = async () => {
     });
     return products;
   } catch (error) {
-    console.log(error);
-    return null;
+    console.error("Error fetching products from Firestore:", error);
+    return [];
   }
 };
