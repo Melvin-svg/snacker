@@ -1,7 +1,6 @@
 import { useUser } from "@clerk/nextjs";
 import { useState } from "react";
 import useSnackerStore from "./useSnackerStore";
-import { checkAvailablity } from "@/utils/checkAvailablity";
 import { createOrder } from "@/utils/createOrder";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -17,29 +16,20 @@ const usePurchaseProduct = () => {
   const purchaseProduct = async (products, amount, type = "normal") => {
     setButtonLoad(true);
     try {
-      const available = await checkAvailablity(products, user?.id, amount);
-      if (available.success) {
+      const res = await createOrder(products);
+      if (res.success) {
         setOpenOrder(true);
-        const res = await createOrder(products, user?.id, amount);
-        if (res.success) {
-          setData({ orderId: res.orderId, amount });
-          updateCredit(-amount);
-          if (type === "cart") removeAll();
-        } else {
-          toast({
-            title: "Error Occured",
-            description: res.error,
-            variant: "destructive",
-          });
-        }
-      } else if (available.insufficientCredit) {
+        setData({ orderId: res.orderId, amount: res.amount });
+        updateCredit(-res.amount);
+        if (type === "cart") removeAll();
+      } else if (res.insufficientCredit) {
         toast({
           title: "Insufficient Wallet Balance",
           description: "Please recharge your wallet to proceed with the order.",
           variant: "destructive",
         });
         setOpenCreditWallet(true);
-      } else if (available.insufficientStock) {
+      } else if (res.insufficientStock) {
         toast({
           title: "Out of Stock",
           description: "This product is currently out of stock.",
@@ -50,8 +40,7 @@ const usePurchaseProduct = () => {
         toast({
           title: "Error",
           description:
-            available.error ||
-            "An unknown error occurred. Please try again later.",
+            res.error || "An unknown error occurred. Please try again later.",
           variant: "destructive",
         });
       }
