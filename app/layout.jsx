@@ -33,11 +33,14 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  // Only load the in-app modal SDK when a gateway is configured. Without it, payments open
+  // the hosted checkout link instead (see utils/processPayment.js). A localhost default
+  // was blocked as mixed content on the HTTPS site and only produced console errors.
   const youpiHost = (
     process.env.NEXT_PUBLIC_YOUPI_GATEWAY_URL ||
     (process.env.NEXT_PUBLIC_YOUPI_PORT
       ? `http://localhost:${process.env.NEXT_PUBLIC_YOUPI_PORT}`
-      : "http://localhost:5000")
+      : "")
   ).replace(/\/$/, "");
 
   return (
@@ -62,13 +65,15 @@ export default function RootLayout({ children }) {
             <Toaster />
           </ThemeProvider>
           {/* YouPI-PG Sovereign In-App Modal Checkout SDK */}
-          <Script
-            id="youpi-pg-sdk"
-            src={`${youpiHost}/youpi.js`}
-            data-youpi-key={process.env.NEXT_PUBLIC_YOUPI_MERCHANT_ID || "snacker-merchant-01"}
-            data-currency="INR"
-            strategy="afterInteractive"
-          />
+          {youpiHost && (
+            <Script
+              id="youpi-pg-sdk"
+              src={`${youpiHost}/youpi.js`}
+              data-youpi-key={process.env.NEXT_PUBLIC_YOUPI_MERCHANT_ID || "00000000-0000-0000-0000-000000000001"}
+              data-currency="INR"
+              strategy="afterInteractive"
+            />
+          )}
         </body>
       </html>
     </ClerkProvider>

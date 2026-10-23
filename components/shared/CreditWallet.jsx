@@ -32,9 +32,13 @@ const CreditWallet = () => {
   const handleRecharge = async () => {
     setLoading(true);
     try {
+      // Close the drawer BEFORE the YouPI modal opens. While open, the vaul/Radix drawer sets
+      // `pointer-events: none` on <body> and traps focus, which made the modal (appended to
+      // <body>) unclickable on desktop and glitchy on mobile. Wait for the close animation.
+      setOpenCreditWallet(false);
+      await new Promise((resolve) => setTimeout(resolve, 350));
       const res = await processPayment(amount, user);
       if (res.ok) {
-        setOpenCreditWallet(false);
         toast({
           title: "Recharge Initiated",
           description: `Complete your UPI transfer in the opened tab. Your wallet will update live.`,

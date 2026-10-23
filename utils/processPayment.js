@@ -17,6 +17,12 @@ export const processPayment = async (amount, user) => {
 
     const data = await response.json();
 
+    // A closed Radix/vaul drawer can leave `pointer-events: none` on <body>, which the
+    // YouPI modal (appended to <body>) inherits, making it unclickable.
+    if (typeof document !== "undefined") {
+      document.body.style.pointerEvents = "";
+    }
+
     return new Promise((resolve) => {
       // 1. In-App Popup Modal with YouPI-PG SDK
       if (typeof window !== "undefined" && window.Youpi && data.checkoutUrl) {
@@ -45,7 +51,12 @@ export const processPayment = async (amount, user) => {
 
       // 2. Fallback: Open hosted checkout window
       if (data.checkoutUrl) {
-        window.open(data.checkoutUrl, "_blank");
+        // Mobile browsers block window.open() outside the tap handler (we awaited a fetch
+        // first) and return null. Fall back to opening checkout in this tab.
+        const tab = window.open(data.checkoutUrl, "_blank");
+        if (!tab) {
+          window.location.assign(data.checkoutUrl);
+        }
         resolve({ ok: true, orderId: data.orderId, checkoutUrl: data.checkoutUrl });
         return;
       }
