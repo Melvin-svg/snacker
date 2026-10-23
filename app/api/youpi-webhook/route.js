@@ -12,13 +12,10 @@ export async function POST(req) {
 
   const rawBody = await req.text(); // Raw body required for accurate HMAC verification
   const signature = req.headers.get("x-gateway-signature") || "";
-  const deliveryId = req.headers.get("x-gateway-delivery-id");
-  const timestamp = Number(req.headers.get("x-gateway-timestamp"));
 
-  // Timestamp is mandatory and must be within 5 minutes (limits replay)
-  if (!Number.isFinite(timestamp) || Math.abs(Date.now() - timestamp) > 5 * 60 * 1000) {
-    return NextResponse.json({ error: "Missing or stale timestamp" }, { status: 400 });
-  }
+  // No timestamp-age check: YouPI retries a failed delivery with its original timestamp, so
+  // rejecting old ones would drop every retry after 5 minutes and leave a paid user uncredited.
+  // Replays are harmless because payments/{orderId} below makes crediting idempotent.
 
   // Constant-time HMAC-SHA256 signature verification
   const expectedSig = "sha256=" + crypto

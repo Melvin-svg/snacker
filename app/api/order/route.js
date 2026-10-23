@@ -34,6 +34,10 @@ export async function POST(request) {
   }
 
   const { amount, currency = "INR" } = await request.json();
+  const parsedAmount = Number(amount);
+  if (!Number.isFinite(parsedAmount) || parsedAmount < 1 || parsedAmount > 10000) {
+    return NextResponse.json({ error: "Enter an amount between ₹1 and ₹10,000" }, { status: 400 });
+  }
   const orderId = `WAL-${nanoid(8)}`;
   const returnUrl = `${request.headers.get("origin") || ""}/`;
 
@@ -57,13 +61,14 @@ export async function POST(request) {
     // Connect to YouPI-PG FCFS payment gateway (POST /api/v1/payments)
     const res = await fetch(`${gatewayUrl}/api/v1/payments`, {
       method: "POST",
+      signal: AbortSignal.timeout(8000),
       headers: {
         "Content-Type": "application/json",
         "X-Merchant-Id": MERCHANT_ID,
       },
       body: JSON.stringify({
         orderId,
-        amount: parseFloat(amount).toFixed(2),
+        amount: parsedAmount.toFixed(2),
         currency,
         returnUrl,
         metadata: { userId },
@@ -84,12 +89,10 @@ export async function POST(request) {
       checkoutUrl: toPublicCheckoutUrl(data.checkoutUrl, gatewayUrl),
     });
   } catch (error) {
-    console.warn("YouPI-PG gateway unreachable, providing mock/offline fallback:", error.message);
-    return NextResponse.json({
-      success: true,
-      orderId,
-      checkoutUrl: `/checkout/${orderId}?amount=${amount}`,
-      note: "Offline/mock gateway fallback",
-    });
+    console.error("YouPI-PG gateway unreachable:", gatewayUrl, error.message);
+    return NextResponse.json(
+      { error: "Payment gateway is offline. Please try again in a minute." },
+      { status: 503 }
+    );
   }
 }
