@@ -25,6 +25,22 @@ export const processPayment = async (amount, user) => {
 
     return new Promise((resolve) => {
       // 1. In-App Popup Modal with YouPI-PG SDK
+      // Safari (iPhone and Mac) is skipped: the modal embeds the checkout in a cross-origin
+      // iframe, which YouPI's `frame-ancestors 'self'` CSP blocks and Safari's tracking
+      // prevention further restricts, leaving a blank modal (no QR on Mac, no page on iPhone).
+      // A top-level navigation to the hosted checkout works everywhere.
+      const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+      const isSafari =
+        /iPhone|iPad|iPod/.test(ua) ||
+        (/Safari/.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR/.test(ua)) ||
+        (typeof navigator !== "undefined" && navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+      if (isSafari && data.checkoutUrl) {
+        window.location.assign(data.checkoutUrl);
+        resolve({ ok: true, orderId: data.orderId, checkoutUrl: data.checkoutUrl });
+        return;
+      }
+
       if (typeof window !== "undefined" && window.Youpi && data.checkoutUrl) {
         window.Youpi.pay({
           checkoutUrl: data.checkoutUrl,
