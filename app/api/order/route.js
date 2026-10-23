@@ -11,6 +11,22 @@ const DEFAULT_GATEWAY_URL = (
 
 const MERCHANT_ID = process.env.YOUPI_MERCHANT_ID || "snacker-merchant-01";
 
+// YouPI-PG in localhost mode (required behind a Cloudflare Quick Tunnel) always builds
+// checkout links on http://localhost:7000, ignoring BASE_CHECKOUT_URL. A phone cannot open
+// that, so swap the origin for the public gateway URL; nginx there routes /checkout/ to :7000.
+function toPublicCheckoutUrl(checkoutUrl, gatewayUrl) {
+  if (!checkoutUrl || !/^https?:\/\//.test(gatewayUrl)) return checkoutUrl;
+  try {
+    const link = new URL(checkoutUrl);
+    if (!["localhost", "127.0.0.1", "0.0.0.0"].includes(link.hostname)) return checkoutUrl;
+    const publicBase = new URL(gatewayUrl);
+    if (["localhost", "127.0.0.1", "0.0.0.0"].includes(publicBase.hostname)) return checkoutUrl;
+    return `${publicBase.origin}${link.pathname}${link.search}`;
+  } catch {
+    return checkoutUrl;
+  }
+}
+
 export async function POST(request) {
   const { userId } = auth();
   if (!userId) {
@@ -65,7 +81,7 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       orderId: data.orderId || orderId,
-      checkoutUrl: data.checkoutUrl,
+      checkoutUrl: toPublicCheckoutUrl(data.checkoutUrl, gatewayUrl),
     });
   } catch (error) {
     console.warn("YouPI-PG gateway unreachable, providing mock/offline fallback:", error.message);
