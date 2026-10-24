@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { adminDb } from "@/firebase/admin";
+import { ensureUserDoc } from "@/lib/ensureUser";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +15,10 @@ export async function GET() {
 
   try {
     const snap = await adminDb.collection("users").doc(userId).get();
+    if (!snap.exists) await ensureUserDoc(userId);
     return NextResponse.json({
       success: true,
-      exists: snap.exists,
+      exists: true,
       credit: snap.exists ? (snap.data().credit ?? 0) : 0,
     });
   } catch (error) {
