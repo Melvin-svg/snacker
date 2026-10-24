@@ -1,10 +1,8 @@
-import { adminDb, FieldValue } from "@/firebase/admin";
-import { rtdb } from "@/firebase/config";
+import { adminDb, adminRtdb, FieldValue } from "@/firebase/admin";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { isAdminUser } from "@/lib/admin";
 import { DEFAULT_SNACKS } from "@/lib/seedData";
 import { normalizeImageUrl } from "@/lib/utils";
-import { ref, set, get } from "firebase/database";
 import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 
@@ -52,11 +50,9 @@ export async function GET() {
     // 2. Fetch maintenance status from Realtime Database
     let maintenance = false;
     try {
-      if (rtdb) {
-        const snap = await get(ref(rtdb, "/onStockUpdation/status"));
-        if (snap.exists()) {
-          maintenance = Boolean(snap.val());
-        }
+      const snap = await adminRtdb().ref("/onStockUpdation/status").get();
+      if (snap.exists()) {
+        maintenance = Boolean(snap.val());
       }
     } catch (e) {
       console.warn("Could not read maintenance status from RTDB:", e.message);
@@ -173,9 +169,7 @@ export async function POST(req) {
       case "toggle_maintenance": {
         const { status } = payload || {};
         const isMaintenance = Boolean(status);
-        if (rtdb) {
-          await set(ref(rtdb, "/onStockUpdation/status"), isMaintenance);
-        }
+        await adminRtdb().ref("/onStockUpdation/status").set(isMaintenance);
 
         return NextResponse.json({
           success: true,

@@ -59,7 +59,7 @@ export const processPayment = async (amount, user) => {
           },
           onClose: function () {
             console.log("Customer closed YouPI payment modal");
-            resolve({ ok: true, orderId: data.orderId, closed: true });
+            resolve({ ok: false, cancelled: true, orderId: data.orderId });
           },
         });
         return;
