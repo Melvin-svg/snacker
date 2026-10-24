@@ -38,7 +38,12 @@ const CreditWallet = () => {
       setOpenCreditWallet(false);
       await new Promise((resolve) => setTimeout(resolve, 350));
       const res = await processPayment(amount, user);
-      if (res.ok) {
+      if (res.cancelled) {
+        toast({
+          title: "Recharge Cancelled",
+          description: "No payment was made.",
+        });
+      } else if (res.ok) {
         toast({
           title: "Recharge Initiated",
           description: `Complete your UPI transfer in the opened tab. Your wallet will update live.`,
