@@ -33,7 +33,13 @@ export async function POST(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { amount, currency = "INR" } = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const { amount, currency = "INR" } = body || {};
   const parsedAmount = Number(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount < 1 || parsedAmount > 10000) {
     return NextResponse.json({ error: "Enter an amount between ₹1 and ₹10,000" }, { status: 400 });
