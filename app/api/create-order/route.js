@@ -25,8 +25,18 @@ export async function POST(req) {
     );
   }
 
+  let body;
   try {
-    const { products } = await req.json();
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "Invalid JSON body" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const { products } = body || {};
 
     if (!Array.isArray(products) || products.length === 0) {
       return NextResponse.json(
