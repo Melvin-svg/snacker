@@ -48,10 +48,18 @@ export async function POST(req) {
         if (paymentDoc.exists) return;
 
         const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists) throw new Error("User document does not exist");
-
-        const currentCredit = userDoc.data()?.credit || 0;
-        transaction.update(userRef, { credit: currentCredit + amountInINR });
+        if (userDoc.exists) {
+          const currentCredit = userDoc.data()?.credit || 0;
+          transaction.update(userRef, { credit: currentCredit + amountInINR });
+        } else {
+          // Paid before a profile was created: create it with this payment instead of failing
+          transaction.set(userRef, {
+            name: "User",
+            userId,
+            credit: amountInINR,
+            timeStamp: FieldValue.serverTimestamp(),
+          });
+        }
         transaction.set(paymentRef, {
           userId,
           orderId,
