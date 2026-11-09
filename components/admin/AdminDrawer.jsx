@@ -11,8 +11,20 @@ import {
   HiOutlineWrenchScrewdriver,
   HiOutlineCheckCircle,
   HiOutlineBanknotes,
+  HiOutlineSquares2X2,
+  HiOutlineSquaresPlus,
+  HiOutlineCube,
+  HiOutlineExclamationTriangle,
+  HiOutlineTicket,
+  HiMagnifyingGlass,
 } from "react-icons/hi2";
 import { useToast } from "@/components/ui/use-toast";
+
+const NAV_ITEMS = [
+  { id: "overview", label: "Inventory", hint: "Stock & metrics", icon: HiOutlineSquares2X2 },
+  { id: "add", label: "Add Product", hint: "New snack or drink", icon: HiOutlineSquaresPlus },
+  { id: "credits", label: "Credits", hint: "User wallets", icon: HiOutlineTicket },
+];
 
 export default function AdminDrawer({ isOpen, onClose, onRefreshData }) {
   const [loading, setLoading] = useState(false);
@@ -260,437 +272,590 @@ export default function AdminDrawer({ isOpen, onClose, onRefreshData }) {
   const drinksCount = adminData.products.filter((p) => p.category === "drinks").length;
   const snacksRatio = totalProducts > 0 ? Math.round((snacksCount / totalProducts) * 100) : 50;
 
+  const stats = [
+    {
+      label: "Total Products",
+      value: totalProducts,
+      icon: HiOutlineSquares2X2,
+      tone: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
+    },
+    {
+      label: "Units in Stock",
+      value: `${totalUnits}`,
+      suffix: "units",
+      icon: HiOutlineCube,
+      tone: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    },
+    {
+      label: "Out of Stock",
+      value: outOfStockCount,
+      icon: HiOutlineExclamationTriangle,
+      tone:
+        outOfStockCount > 0
+          ? "text-red-400 bg-red-500/10 border-red-500/20"
+          : "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    },
+  ];
+
+  const activeNavItem = NAV_ITEMS.find((n) => n.id === activeTab);
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/75 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
 
-          {/* Drawer Content */}
+          {/* Dashboard Modal */}
           <motion.div
-            className="relative flex h-full w-full max-w-lg flex-col bg-dark-100 text-white shadow-2xl overflow-hidden border-l border-neutral-800"
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="relative flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-neutral-800 bg-dark-100 text-white shadow-2xl"
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ type: "spring", damping: 28, stiffness: 260 }}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-neutral-800 p-5 bg-dark-200">
-              <div className="flex items-center gap-2">
-                <div className="rounded-lg bg-yellow-500/20 p-2 text-yellow-400">
-                  <HiShieldCheck size={24} />
+            {/* Top Bar */}
+            <header className="flex shrink-0 items-center justify-between border-b border-neutral-800 bg-dark-200 px-5 py-3.5 sm:px-6">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg border border-yellow-500/25 bg-yellow-500/10 p-2 text-yellow-400">
+                  <HiShieldCheck size={22} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold flex items-center gap-2">
+                  <h2 className="text-base font-bold tracking-tight sm:text-lg">
                     Admin Control Suite
-                    <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full border border-yellow-500/30">
-                      Direct UI Mode
-                    </span>
                   </h2>
-                  <p className="text-xs text-neutral-400">Authenticated admin session</p>
+                  <p className="hidden text-[11px] text-neutral-500 sm:block">
+                    Authenticated admin session · Direct control of shelves, wallets & machine status
+                  </p>
                 </div>
               </div>
               <button
                 onClick={onClose}
-                className="rounded-lg p-2 text-neutral-400 hover:bg-neutral-800 hover:text-white transition"
+                className="rounded-lg p-2 text-neutral-400 transition hover:bg-neutral-800 hover:text-white"
+                aria-label="Close admin panel"
               >
                 <HiXMark size={22} />
               </button>
-            </div>
+            </header>
 
-            {/* Navigation Tabs */}
-            <div className="flex border-b border-neutral-800 bg-dark-200/50 px-5 pt-2">
-              <button
-                onClick={() => setActiveTab("overview")}
-                className={`pb-2.5 px-3 text-sm font-medium border-b-2 transition ${
-                  activeTab === "overview"
-                    ? "border-yellow-400 text-yellow-400"
-                    : "border-transparent text-neutral-400 hover:text-white"
-                }`}
-              >
-                Inventory & Viz
-              </button>
-              <button
-                onClick={() => setActiveTab("add")}
-                className={`pb-2.5 px-3 text-sm font-medium border-b-2 transition ${
-                  activeTab === "add"
-                    ? "border-yellow-400 text-yellow-400"
-                    : "border-transparent text-neutral-400 hover:text-white"
-                }`}
-              >
-                + Add Snack
-              </button>
-              <button
-                onClick={() => setActiveTab("credits")}
-                className={`pb-2.5 px-3 text-sm font-medium border-b-2 transition ${
-                  activeTab === "credits"
-                    ? "border-yellow-400 text-yellow-400"
-                    : "border-transparent text-neutral-400 hover:text-white"
-                }`}
-              >
-                Credits
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-6">
-              {/* Machine Maintenance Status Bar */}
-              <div className="flex items-center justify-between rounded-xl bg-dark-200 p-4 border border-neutral-800">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`rounded-full p-2.5 ${
-                      adminData.maintenance
-                        ? "bg-amber-500/20 text-amber-400"
-                        : "bg-emerald-500/20 text-emerald-400"
-                    }`}
-                  >
-                    <HiOutlineWrenchScrewdriver size={22} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold">Vending Machine Status</h4>
-                    <p className="text-xs text-neutral-400">
-                      {adminData.maintenance
-                        ? "Under Maintenance (Restocking Mode)"
-                        : "Machine is Live & Vending"}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleToggleMaintenance}
-                  disabled={loading}
-                  className={`text-xs px-3.5 py-1.5 rounded-lg font-bold transition shadow ${
-                    adminData.maintenance
-                      ? "bg-amber-500 text-dark-200 hover:bg-amber-400"
-                      : "bg-emerald-600 text-white hover:bg-emerald-500"
-                  }`}
-                >
-                  {adminData.maintenance ? "Set Live" : "Start Restock"}
-                </button>
-              </div>
-
-              {activeTab === "overview" ? (
-                <>
-                  {/* Visual Inventory Metrics */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-xl bg-dark-200 p-3.5 border border-neutral-800">
-                      <p className="text-xs text-neutral-400">Total Snacks</p>
-                      <h3 className="text-xl font-bold text-white mt-1">{totalProducts}</h3>
-                    </div>
-                    <div className="rounded-xl bg-dark-200 p-3.5 border border-neutral-800">
-                      <p className="text-xs text-neutral-400">Total Stock</p>
-                      <h3 className="text-xl font-bold text-primary mt-1">{totalUnits} units</h3>
-                    </div>
-                    <div className="rounded-xl bg-dark-200 p-3.5 border border-neutral-800">
-                      <p className="text-xs text-neutral-400">Out of Stock</p>
-                      <h3
-                        className={`text-xl font-bold mt-1 ${
-                          outOfStockCount > 0 ? "text-red-400" : "text-emerald-400"
+            <div className="flex min-h-0 flex-1">
+              {/* Sidebar (desktop) */}
+              <aside className="hidden w-60 shrink-0 flex-col border-r border-neutral-800 bg-dark-200 p-4 md:flex">
+                <nav className="space-y-1.5">
+                  {NAV_ITEMS.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id)}
+                        className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
+                          isActive
+                            ? "bg-yellow-500/10 text-yellow-300 ring-1 ring-inset ring-yellow-500/30"
+                            : "text-neutral-400 hover:bg-neutral-900 hover:text-white"
                         }`}
                       >
-                        {outOfStockCount}
-                      </h3>
-                    </div>
-                  </div>
+                        <span
+                          className={`rounded-lg p-2 text-base transition ${
+                            isActive ? "bg-yellow-500/15 text-yellow-400" : "text-neutral-500 group-hover:text-neutral-300"
+                          }`}
+                        >
+                          <Icon size={18} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold">{item.label}</span>
+                          <span className="block truncate text-[11px] text-neutral-500">{item.hint}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </nav>
 
-                  {/* Category Distribution Visual Meter */}
-                  <div className="rounded-xl bg-dark-200 p-4 border border-neutral-800 space-y-2">
-                    <div className="flex justify-between text-xs text-neutral-300 font-medium">
-                      <span>Snacks ({snacksCount})</span>
-                      <span>Drinks ({drinksCount})</span>
-                    </div>
-                    <div className="h-2.5 w-full bg-neutral-800 rounded-full overflow-hidden flex">
-                      <div
-                        className="bg-yellow-400 h-full transition-all duration-500"
-                        style={{ width: `${snacksRatio}%` }}
+                {/* Machine status widget */}
+                <div className="mt-auto space-y-3 pt-4">
+                  <div className="rounded-xl border border-neutral-800 bg-dark-100 p-3.5">
+                    <p className="mb-2 text-xs font-semibold text-neutral-300">Vending Machine</p>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          adminData.maintenance ? "animate-pulse bg-amber-400" : "bg-emerald-400"
+                        }`}
                       />
-                      <div
-                        className="bg-cyan-400 h-full transition-all duration-500"
-                        style={{ width: `${100 - snacksRatio}%` }}
-                      />
-                    </div>
-                    <p className="text-[11px] text-neutral-500 text-right">
-                      {snacksRatio}% snacks · {100 - snacksRatio}% drinks
-                    </p>
-                  </div>
-
-                  {/* Seed Database Banner (If empty or whenever desired) */}
-                  <div className="rounded-xl bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/20 p-4 flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-bold text-yellow-400 flex items-center gap-1.5">
-                        <HiOutlineSparkles size={18} />
-                        1-Click Database Seeding
-                      </h4>
-                      <p className="text-xs text-neutral-400 mt-0.5">
-                        Populate shelf with Lays, Doritos, Oreo, Monster, etc.
-                      </p>
+                      <span className={`text-xs font-medium ${adminData.maintenance ? "text-amber-300" : "text-emerald-300"}`}>
+                        {adminData.maintenance ? "Maintenance mode" : "Live & vending"}
+                      </span>
                     </div>
                     <button
-                      onClick={handleSeed}
+                      onClick={handleToggleMaintenance}
                       disabled={loading}
-                      className="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-dark-200 font-bold text-xs rounded-lg transition disabled:opacity-50"
+                      className={`mt-3 w-full rounded-lg py-2 text-xs font-bold transition shadow disabled:opacity-50 ${
+                        adminData.maintenance
+                          ? "bg-amber-500 text-dark-200 hover:bg-amber-400"
+                          : "bg-emerald-600 text-white hover:bg-emerald-500"
+                      }`}
                     >
-                      {loading ? "Seeding..." : "Seed Products"}
+                      {adminData.maintenance ? "Set Live" : "Start Restock"}
                     </button>
                   </div>
+                  <p className="px-1 text-[10px] leading-relaxed text-neutral-600">
+                    Changes to stock & maintenance go live instantly across the shop.
+                  </p>
+                </div>
+              </aside>
 
-                  {/* Product Stock List with Inline Modifiers */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold text-neutral-200">
-                        Live Inventory & Stock Modifiers
-                      </h4>
-                      <button
-                        onClick={fetchAdminData}
-                        className="text-xs text-neutral-400 hover:text-white flex items-center gap-1"
-                      >
-                        <HiArrowPath size={14} className={loading ? "animate-spin" : ""} />
-                        Refresh
-                      </button>
-                    </div>
+              {/* Mobile tab bar */}
+              <div className="absolute left-1/2 top-[68px] flex w-max -translate-x-1/2 gap-1 rounded-full border border-neutral-800 bg-dark-200 p-1 shadow-xl md:hidden">
+                {NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                        isActive
+                          ? "bg-yellow-500/15 text-yellow-300"
+                          : "text-neutral-400 hover:text-white"
+                      }`}
+                    >
+                      <Icon size={14} />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
 
-                    {adminData.products.length === 0 ? (
-                      <div className="text-center py-8 text-neutral-500 text-sm">
-                        No products in Firestore yet. Click "Seed Products" above to populate!
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {adminData.products.map((p) => {
-                          const stockNum = Number(p.stock) || 0;
+              {/* Main Content */}
+              <main className="min-w-0 flex-1 overflow-y-auto">
+                {/* Section heading */}
+                <div className="flex items-center justify-between gap-3 px-5 pb-1 pt-5 sm:px-7 sm:pt-6">
+                  <div className="flex items-center gap-2 md:hidden">
+                    {/* Maintenance pill (mobile, since sidebar is hidden) */}
+                    <button
+                      onClick={handleToggleMaintenance}
+                      disabled={loading}
+                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold transition disabled:opacity-50 ${
+                        adminData.maintenance
+                          ? "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30"
+                          : "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30"
+                      }`}
+                    >
+                      <HiOutlineWrenchScrewdriver size={13} />
+                      {adminData.maintenance ? "Maintenance" : "Live"}
+                    </button>
+                  </div>
+                  <h3 className="hidden text-lg font-bold tracking-tight md:block">
+                    {activeNavItem?.label}
+                  </h3>
+                  {activeTab === "overview" && (
+                    <button
+                      onClick={fetchAdminData}
+                      className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-neutral-400 transition hover:bg-neutral-900 hover:text-white"
+                    >
+                      <HiArrowPath size={14} className={loading ? "animate-spin" : ""} />
+                      Refresh
+                    </button>
+                  )}
+                </div>
+
+                <div className="px-5 pb-8 pt-3 sm:px-7">
+                  {activeTab === "overview" ? (
+                    <div className="space-y-5">
+                      {/* Stat Cards */}
+                      <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                        {stats.map((s) => {
+                          const Icon = s.icon;
                           return (
                             <div
-                              key={p.id}
-                              className="flex items-center justify-between rounded-lg bg-dark-200 p-3 border border-neutral-800"
+                              key={s.label}
+                              className="rounded-xl border border-neutral-800 bg-dark-200 p-4 transition hover:border-neutral-700"
                             >
-                              <div className="flex-1 pr-3">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-mono font-bold bg-neutral-800 px-1.5 py-0.5 rounded text-yellow-400">
-                                    {p.position || "A1"}
-                                  </span>
-                                  <span className="text-sm font-semibold text-white truncate max-w-[150px]">
-                                    {p.name}
-                                  </span>
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-500">
+                                    {s.label}
+                                  </p>
+                                  <h3 className="mt-1.5 text-2xl font-bold tracking-tight text-white">
+                                    {s.value}
+                                    {s.suffix && (
+                                      <span className="ml-1 text-xs font-medium text-neutral-500">
+                                        {s.suffix}
+                                      </span>
+                                    )}
+                                  </h3>
                                 </div>
-                                <div className="flex items-center gap-3 text-xs text-neutral-400 mt-1">
-                                  <span>₹{p.price}</span>
-                                  <span className="capitalize text-neutral-500">{p.category}</span>
-                                </div>
-                              </div>
-
-                              {/* Inline Stock Counter */}
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => handleUpdateStock(p.id, stockNum, -1)}
-                                  className="h-7 w-7 rounded bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-neutral-300 transition"
-                                >
-                                  <HiMinus size={14} />
-                                </button>
-                                <span
-                                  className={`min-w-[32px] text-center font-mono font-bold text-sm ${
-                                    stockNum === 0
-                                      ? "text-red-400"
-                                      : stockNum < 5
-                                      ? "text-yellow-400"
-                                      : "text-emerald-400"
-                                  }`}
-                                >
-                                  {stockNum}
+                                <span className={`rounded-lg border p-2 ${s.tone}`}>
+                                  <Icon size={16} />
                                 </span>
-                                <button
-                                  onClick={() => handleUpdateStock(p.id, stockNum, 1)}
-                                  className="h-7 w-7 rounded bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-neutral-300 transition"
-                                >
-                                  <HiPlus size={14} />
-                                </button>
                               </div>
                             </div>
                           );
                         })}
                       </div>
-                    )}
-                  </div>
-                </>
-              ) : activeTab === "credits" ? (
-                /* User Wallet Credits */
-                <div className="space-y-3">
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      fetchUsers(userQuery);
-                    }}
-                    className="flex gap-2"
-                  >
-                    <input
-                      type="text"
-                      placeholder="Search name or email"
-                      value={userQuery}
-                      onChange={(e) => setUserQuery(e.target.value)}
-                      className="flex-1 bg-dark-200 rounded-lg p-2.5 text-sm border border-neutral-700 focus:border-yellow-400 outline-none"
-                    />
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="px-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition"
-                    >
-                      <HiArrowPath size={16} className={loading ? "animate-spin" : ""} />
-                    </button>
-                  </form>
-                  <p className="text-[11px] text-neutral-500">
-                    Everyone who has signed in with Clerk, most recent first. Users without a wallet get one on their first top-up.
-                  </p>
 
-                  {users.length === 0 ? (
-                    <div className="text-center py-8 text-neutral-500 text-sm">
-                      {loading ? "Loading users..." : "No users found."}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {users.map((u) => (
-                        <div
-                          key={u.id}
-                          className="rounded-lg bg-dark-200 p-3 border border-neutral-800 space-y-2"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-white truncate">{u.name}</p>
-                              <p className="text-xs text-neutral-400 truncate">{u.email}</p>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <p className="text-sm font-mono font-bold text-emerald-400">₹{u.credit}</p>
-                              {!u.hasWallet && (
-                                <span className="text-[10px] text-amber-300">no wallet yet</span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <input
-                              type="number"
-                              min="1"
-                              step="1"
-                              placeholder="₹ amount"
-                              value={creditInputs[u.id] ?? ""}
-                              onChange={(e) =>
-                                setCreditInputs((prev) => ({ ...prev, [u.id]: e.target.value }))
-                              }
-                              className="flex-1 min-w-0 bg-dark-100 rounded-lg p-2 text-sm border border-neutral-700 focus:border-yellow-400 outline-none"
-                            />
-                            <button
-                              onClick={() => handleAddCredits(u)}
-                              disabled={creditBusy === u.id}
-                              className="flex items-center gap-1 px-3 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-dark-200 font-bold text-xs transition disabled:opacity-50"
-                            >
-                              <HiOutlineBanknotes size={16} />
-                              {creditBusy === u.id ? "Adding..." : "Add"}
-                            </button>
+                      {/* Category Distribution */}
+                      <section className="rounded-xl border border-neutral-800 bg-dark-200 p-4 sm:p-5">
+                        <div className="mb-3 flex items-center justify-between">
+                          <h4 className="flex items-center gap-2 text-sm font-semibold text-neutral-200">
+                            <span className="h-1 w-6 rounded-full bg-yellow-400" />
+                            Category Distribution
+                          </h4>
+                          <span className="text-xs text-neutral-500">
+                            {totalProducts} products on shelf
+                          </span>
+                        </div>
+                        <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-neutral-800">
+                          <div
+                            className="bg-yellow-400 transition-all duration-500"
+                            style={{ width: `${snacksRatio}%` }}
+                          />
+                          <div
+                            className="bg-cyan-400 transition-all duration-500"
+                            style={{ width: `${100 - snacksRatio}%` }}
+                          />
+                        </div>
+                        <div className="mt-2.5 flex flex-wrap justify-between gap-2 text-xs">
+                          <span className="flex items-center gap-1.5 text-neutral-300">
+                            <span className="h-2 w-2 rounded-full bg-yellow-400" />
+                            Snacks · {snacksCount} ({snacksRatio}%)
+                          </span>
+                          <span className="flex items-center gap-1.5 text-neutral-300">
+                            <span className="h-2 w-2 rounded-full bg-cyan-400" />
+                            Drinks · {drinksCount} ({100 - snacksRatio}%)
+                          </span>
+                        </div>
+                      </section>
+
+                      {/* Seed Database */}
+                      <section className="flex flex-col gap-3 rounded-xl border border-yellow-500/20 bg-gradient-to-r from-yellow-500/10 to-transparent p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                        <div className="flex items-start gap-3">
+                          <span className="rounded-lg border border-yellow-500/25 bg-yellow-500/10 p-2 text-yellow-400">
+                            <HiOutlineSparkles size={16} />
+                          </span>
+                          <div>
+                            <h4 className="text-sm font-semibold text-yellow-300">
+                              1-Click Database Seeding
+                            </h4>
+                            <p className="mt-0.5 text-xs text-neutral-400">
+                              Populate the shelf with Lays, Doritos, Oreo, Monster and more.
+                            </p>
                           </div>
                         </div>
-                      ))}
+                        <button
+                          onClick={handleSeed}
+                          disabled={loading}
+                          className="shrink-0 rounded-lg bg-yellow-400 px-4 py-2 text-xs font-bold text-dark-200 shadow transition hover:bg-yellow-500 disabled:opacity-50"
+                        >
+                          {loading ? "Seeding..." : "Seed Products"}
+                        </button>
+                      </section>
+
+                      {/* Inventory List */}
+                      <section>
+                        <div className="mb-3 flex items-center justify-between">
+                          <h4 className="flex items-center gap-2 text-sm font-semibold text-neutral-200">
+                            <span className="h-1 w-6 rounded-full bg-yellow-400" />
+                            Live Inventory
+                          </h4>
+                          <span className="text-xs text-neutral-500">Tap + / − to adjust stock</span>
+                        </div>
+
+                        {adminData.products.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-neutral-800 py-10 text-center text-sm text-neutral-500">
+                            No products in Firestore yet. Click “Seed Products” above to populate!
+                          </div>
+                        ) : (
+                          <div className="overflow-hidden rounded-xl border border-neutral-800">
+                            {adminData.products.map((p, i) => {
+                              const stockNum = Number(p.stock) || 0;
+                              return (
+                                <div
+                                  key={p.id}
+                                  className={`flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-neutral-900/60 ${
+                                    i !== 0 ? "border-t border-neutral-800" : ""
+                                  }`}
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-[11px] font-bold text-yellow-400">
+                                        {p.position || "A1"}
+                                      </span>
+                                      <span className="truncate text-sm font-semibold text-white">
+                                        {p.name}
+                                      </span>
+                                    </div>
+                                    <div className="mt-0.5 flex items-center gap-3 text-[11px] text-neutral-500">
+                                      <span className="text-neutral-400">₹{p.price}</span>
+                                      <span className="capitalize">{p.category}</span>
+                                      {stockNum === 0 && (
+                                        <span className="rounded-full bg-red-500/15 px-2 py-0.5 font-medium text-red-300">
+                                          Out of stock
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex shrink-0 items-center gap-2">
+                                    <button
+                                      onClick={() => handleUpdateStock(p.id, stockNum, -1)}
+                                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-800 text-neutral-300 transition hover:bg-neutral-700 hover:text-white"
+                                      aria-label={`Decrease stock of ${p.name}`}
+                                    >
+                                      <HiMinus size={14} />
+                                    </button>
+                                    <span
+                                      className={`min-w-[34px] text-center font-mono text-sm font-bold ${
+                                        stockNum === 0
+                                          ? "text-red-400"
+                                          : stockNum < 5
+                                          ? "text-yellow-400"
+                                          : "text-emerald-400"
+                                      }`}
+                                    >
+                                      {stockNum}
+                                    </span>
+                                    <button
+                                      onClick={() => handleUpdateStock(p.id, stockNum, 1)}
+                                      className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-800 text-neutral-300 transition hover:bg-neutral-700 hover:text-white"
+                                      aria-label={`Increase stock of ${p.name}`}
+                                    >
+                                      <HiPlus size={14} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </section>
                     </div>
+                  ) : activeTab === "credits" ? (
+                    /* User Wallet Credits */
+                    <div className="mx-auto max-w-2xl space-y-4">
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          fetchUsers(userQuery);
+                        }}
+                        className="flex gap-2"
+                      >
+                        <div className="relative flex-1">
+                          <HiMagnifyingGlass
+                            size={16}
+                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Search name or email"
+                            value={userQuery}
+                            onChange={(e) => setUserQuery(e.target.value)}
+                            className="w-full rounded-lg border border-neutral-700 bg-dark-200 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-yellow-400"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="rounded-lg bg-neutral-800 px-4 text-neutral-200 transition hover:bg-neutral-700 disabled:opacity-50"
+                        >
+                          <HiArrowPath size={16} className={loading ? "animate-spin" : ""} />
+                        </button>
+                      </form>
+                      <p className="text-[11px] leading-relaxed text-neutral-500">
+                        Everyone who has signed in with Clerk, most recent first. Users without a
+                        wallet get one on their first top-up.
+                      </p>
+
+                      {users.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-neutral-800 py-10 text-center text-sm text-neutral-500">
+                          {loading ? "Loading users..." : "No users found."}
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {users.map((u) => (
+                            <div
+                              key={u.id}
+                              className="rounded-xl border border-neutral-800 bg-dark-200 p-4 transition hover:border-neutral-700"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-3">
+                                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-yellow-500/10 text-sm font-bold text-yellow-300 ring-1 ring-inset ring-yellow-500/25">
+                                    {(u.name || "?").trim().charAt(0).toUpperCase()}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-semibold text-white">
+                                      {u.name}
+                                    </p>
+                                    <p className="truncate text-xs text-neutral-400">{u.email}</p>
+                                  </div>
+                                </div>
+                                <div className="shrink-0 text-right">
+                                  <p className="font-mono text-sm font-bold text-emerald-400">
+                                    ₹{u.credit}
+                                  </p>
+                                  {!u.hasWallet && (
+                                    <span className="text-[10px] text-amber-300">no wallet yet</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="mt-3 flex gap-2 pl-0 sm:pl-12">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  step="1"
+                                  placeholder="₹ amount"
+                                  value={creditInputs[u.id] ?? ""}
+                                  onChange={(e) =>
+                                    setCreditInputs((prev) => ({ ...prev, [u.id]: e.target.value }))
+                                  }
+                                  className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-dark-100 p-2 text-sm outline-none transition focus:border-yellow-400"
+                                />
+                                <button
+                                  onClick={() => handleAddCredits(u)}
+                                  disabled={creditBusy === u.id}
+                                  className="flex shrink-0 items-center gap-1.5 rounded-lg bg-yellow-400 px-3.5 text-xs font-bold text-dark-200 transition hover:bg-yellow-500 disabled:opacity-50"
+                                >
+                                  <HiOutlineBanknotes size={15} />
+                                  {creditBusy === u.id ? "Adding..." : "Add"}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Add Snack Form */
+                    <form onSubmit={handleAddProduct} className="mx-auto max-w-2xl space-y-5">
+                      <section className="rounded-xl border border-neutral-800 bg-dark-200 p-4 sm:p-5">
+                        <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-200">
+                          <span className="h-1 w-6 rounded-full bg-yellow-400" />
+                          Product Details
+                        </h4>
+                        <div className="space-y-4">
+                          <div>
+                            <label className="mb-1.5 block text-xs font-medium text-neutral-300">
+                              Snack Name
+                            </label>
+                            <input
+                              required
+                              type="text"
+                              placeholder="e.g. Lays Gourmet"
+                              value={form.name}
+                              onChange={(e) => setForm({ ...form, name: e.target.value })}
+                              className="w-full rounded-lg border border-neutral-700 bg-dark-100 p-2.5 text-sm outline-none transition focus:border-yellow-400"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="mb-1.5 block text-xs font-medium text-neutral-300">
+                              Subtitle / Description
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Lime & Herb Flavour"
+                              value={form.subtitle}
+                              onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
+                              className="w-full rounded-lg border border-neutral-700 bg-dark-100 p-2.5 text-sm outline-none transition focus:border-yellow-400"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="mb-1.5 block text-xs font-medium text-neutral-300">
+                                Category
+                              </label>
+                              <select
+                                value={form.category}
+                                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                                className="w-full rounded-lg border border-neutral-700 bg-dark-100 p-2.5 text-sm outline-none transition focus:border-yellow-400"
+                              >
+                                <option value="snacks">Snacks</option>
+                                <option value="drinks">Drinks</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="mb-1.5 block text-xs font-medium text-neutral-300">
+                                Position in Machine
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="e.g. C1"
+                                value={form.position}
+                                onChange={(e) => setForm({ ...form, position: e.target.value })}
+                                className="w-full rounded-lg border border-neutral-700 bg-dark-100 p-2.5 font-mono text-sm uppercase outline-none transition focus:border-yellow-400"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section className="rounded-xl border border-neutral-800 bg-dark-200 p-4 sm:p-5">
+                        <h4 className="mb-4 flex items-center gap-2 text-sm font-semibold text-neutral-200">
+                          <span className="h-1 w-6 rounded-full bg-yellow-400" />
+                          Pricing & Stock
+                        </h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="mb-1.5 block text-xs font-medium text-neutral-300">
+                              Price (₹)
+                            </label>
+                            <input
+                              required
+                              type="number"
+                              min="1"
+                              value={form.price}
+                              onChange={(e) => setForm({ ...form, price: e.target.value })}
+                              className="w-full rounded-lg border border-neutral-700 bg-dark-100 p-2.5 text-sm outline-none transition focus:border-yellow-400"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="mb-1.5 block text-xs font-medium text-neutral-300">
+                              Initial Stock
+                            </label>
+                            <input
+                              required
+                              type="number"
+                              min="0"
+                              value={form.stock}
+                              onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                              className="w-full rounded-lg border border-neutral-700 bg-dark-100 p-2.5 text-sm outline-none transition focus:border-yellow-400"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mt-4">
+                          <label className="mb-1.5 block text-xs font-medium text-neutral-300">
+                            Image URL
+                          </label>
+                          <input
+                            type="url"
+                            placeholder="Google Drive link or https://..."
+                            value={form.imgSrc}
+                            onChange={(e) => setForm({ ...form, imgSrc: e.target.value })}
+                            className="w-full rounded-lg border border-neutral-700 bg-dark-100 p-2.5 text-sm outline-none transition focus:border-yellow-400"
+                          />
+                        </div>
+                      </section>
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full rounded-lg bg-yellow-400 p-3 text-sm font-bold text-dark-200 shadow transition hover:bg-yellow-500 disabled:opacity-50"
+                      >
+                        {loading ? "Adding Product..." : "Save Product to Shelf"}
+                      </button>
+                    </form>
                   )}
                 </div>
-              ) : (
-                /* Add Snack Form */
-                <form onSubmit={handleAddProduct} className="space-y-4">
-                  <div>
-                    <label className="text-xs text-neutral-300 block mb-1">Snack Name</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="e.g. Lays Gourmet"
-                      value={form.name}
-                      onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      className="w-full bg-dark-200 rounded-lg p-2.5 text-sm border border-neutral-700 focus:border-yellow-400 outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-neutral-300 block mb-1">Subtitle / Description</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Lime & Herb Flavour"
-                      value={form.subtitle}
-                      onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
-                      className="w-full bg-dark-200 rounded-lg p-2.5 text-sm border border-neutral-700 focus:border-yellow-400 outline-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-neutral-300 block mb-1">Category</label>
-                      <select
-                        value={form.category}
-                        onChange={(e) => setForm({ ...form, category: e.target.value })}
-                        className="w-full bg-dark-200 rounded-lg p-2.5 text-sm border border-neutral-700 focus:border-yellow-400 outline-none"
-                      >
-                        <option value="snacks">Snacks</option>
-                        <option value="drinks">Drinks</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-xs text-neutral-300 block mb-1">Position in Machine</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. C1"
-                        value={form.position}
-                        onChange={(e) => setForm({ ...form, position: e.target.value })}
-                        className="w-full bg-dark-200 rounded-lg p-2.5 text-sm border border-neutral-700 focus:border-yellow-400 outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-neutral-300 block mb-1">Price (₹)</label>
-                      <input
-                        required
-                        type="number"
-                        min="1"
-                        value={form.price}
-                        onChange={(e) => setForm({ ...form, price: e.target.value })}
-                        className="w-full bg-dark-200 rounded-lg p-2.5 text-sm border border-neutral-700 focus:border-yellow-400 outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-xs text-neutral-300 block mb-1">Initial Stock</label>
-                      <input
-                        required
-                        type="number"
-                        min="0"
-                        value={form.stock}
-                        onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                        className="w-full bg-dark-200 rounded-lg p-2.5 text-sm border border-neutral-700 focus:border-yellow-400 outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-neutral-300 block mb-1">Image URL</label>
-                    <input
-                      type="url"
-                      placeholder="Google Drive link or https://..."
-                      value={form.imgSrc}
-                      onChange={(e) => setForm({ ...form, imgSrc: e.target.value })}
-                      className="w-full bg-dark-200 rounded-lg p-2.5 text-sm border border-neutral-700 focus:border-yellow-400 outline-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-yellow-400 hover:bg-yellow-500 text-dark-200 font-bold p-3 rounded-lg text-sm transition shadow mt-4 disabled:opacity-50"
-                  >
-                    {loading ? "Adding Product..." : "Save Product to Shelf"}
-                  </button>
-                </form>
-              )}
+              </main>
             </div>
           </motion.div>
         </div>
