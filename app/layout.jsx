@@ -65,11 +65,11 @@ export default function RootLayout({ children }) {
             <Toaster />
           </ThemeProvider>
           {/* YouPI-PG Sovereign In-App Modal Checkout SDK */}
-          {youpiHost && (
+          {youpiHost && process.env.NEXT_PUBLIC_YOUPI_MERCHANT_ID && (
             <Script
               id="youpi-pg-sdk"
               src={`${youpiHost}/youpi.js`}
-              data-youpi-key={process.env.NEXT_PUBLIC_YOUPI_MERCHANT_ID || "00000000-0000-0000-0000-000000000001"}
+              data-youpi-key={process.env.NEXT_PUBLIC_YOUPI_MERCHANT_ID}
               data-currency="INR"
               strategy="afterInteractive"
             />

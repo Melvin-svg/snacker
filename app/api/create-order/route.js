@@ -2,6 +2,7 @@ import { adminDb, FieldValue } from "@/firebase/admin";
 import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { auth } from "@clerk/nextjs/server";
+import { isMaintenanceMode, maintenanceResponse } from "@/lib/maintenance";
 
 class OrderError extends Error {
   constructor(code, message) {
@@ -24,6 +25,8 @@ export async function POST(req) {
       { status: 401 },
     );
   }
+
+  if (await isMaintenanceMode()) return maintenanceResponse();
 
   try {
     const { products } = await req.json();

@@ -1,6 +1,6 @@
 import { adminDb, FieldValue } from "@/firebase/admin";
 import { rtdb } from "@/firebase/config";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser, clerkClient } from "@clerk/nextjs/server";
 import { isAdminUser } from "@/lib/admin";
 import { DEFAULT_SNACKS } from "@/lib/seedData";
 import { normalizeImageUrl } from "@/lib/utils";
@@ -9,6 +9,16 @@ import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 
 export const dynamic = "force-dynamic";
+
+const MAX_CREDIT_TOPUP = 5000;
+
+const primaryEmail = (u) =>
+  u.emailAddresses?.find((e) => e.id === u.primaryEmailAddressId)?.emailAddress ||
+  u.emailAddresses?.[0]?.emailAddress ||
+  "";
+
+const displayName = (u) =>
+  u.username || u.firstName || primaryEmail(u).split("@")[0] || "User";
 
 /**
  * Strict server-side verification: guarantees that ONLY the verified admin
@@ -173,6 +183,21 @@ export async function POST(req) {
       case "toggle_maintenance": {
         const { status } = payload || {};
         const isMaintenance = Boolean(status);
+        // Server-side flag: blocks orders and top-ups, and takes the payment gateway offline.
+        // Going live restores "online" only if the Pi tunnel has published a host URL.
+        const gatewayRef = adminDb.collection("config").doc("gateway");
+        const gatewayDoc = await gatewayRef.get();
+        await gatewayRef.set(
+          {
+            maintenance: isMaintenance,
+            status:
+              !isMaintenance && gatewayDoc.data()?.hostUrl ? "online" : "offline",
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true },
+        );
+
+        // Realtime flag drives the maintenance screen in the client (components/shared/Tab.jsx)
         if (rtdb) {
           await set(ref(rtdb, "/onStockUpdation/status"), isMaintenance);
         }
@@ -181,6 +206,101 @@ export async function POST(req) {
           success: true,
           message: `Maintenance mode ${isMaintenance ? "ENABLED" : "DISABLED"}`,
           maintenance: isMaintenance,
+        });
+      }
+
+      case "list_users": {
+        // Clerk is the source of truth for who has signed in; Firestore holds the wallet.
+        // Users who signed in before their wallet doc was created show credit 0 / hasWallet false.
+        const query = String(payload?.query || "").trim();
+        const { data: clerkUsers } = await clerkClient().users.getUserList({
+          limit: 50,
+          orderBy: "-last_sign_in_at",
+          ...(query ? { query } : {}),
+        });
+
+        const walletDocs = clerkUsers.length
+          ? await adminDb.getAll(
+              ...clerkUsers.map((u) => adminDb.collection("users").doc(u.id)),
+            )
+          : [];
+
+        const users = clerkUsers.map((u, i) => {
+          const wallet = walletDocs[i];
+          return {
+            id: u.id,
+            name: displayName(u),
+            email: primaryEmail(u),
+            lastSignInAt: u.lastSignInAt,
+            hasWallet: wallet.exists,
+            credit: wallet.exists ? Number(wallet.data()?.credit ?? 0) : 0,
+          };
+        });
+
+        return NextResponse.json({ success: true, users });
+      }
+
+      case "add_credits": {
+        const { userId, amount, note } = payload || {};
+        const value = Number(amount);
+        if (!userId || !Number.isInteger(value) || value < 1 || value > MAX_CREDIT_TOPUP) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Amount must be a whole number between 1 and ${MAX_CREDIT_TOPUP}`,
+            },
+            { status: 400 },
+          );
+        }
+
+        // Only credit real Clerk accounts
+        let target;
+        try {
+          target = await clerkClient().users.getUser(userId);
+        } catch {
+          return NextResponse.json(
+            { success: false, error: "User not found in Clerk" },
+            { status: 404 },
+          );
+        }
+
+        const userRef = adminDb.collection("users").doc(userId);
+        const logRef = adminDb.collection("creditLogs").doc();
+        let newCredit = 0;
+
+        await adminDb.runTransaction(async (tx) => {
+          const doc = await tx.get(userRef);
+          const current = doc.exists ? Number(doc.data()?.credit ?? 0) : 0;
+          newCredit = current + value;
+
+          if (doc.exists) {
+            tx.update(userRef, { credit: newCredit, updatedAt: FieldValue.serverTimestamp() });
+          } else {
+            // Signed in via Clerk but never hit /api/auth/create-user: create the wallet now
+            tx.set(userRef, {
+              name: displayName(target),
+              userId,
+              credit: newCredit,
+              timeStamp: FieldValue.serverTimestamp(),
+            });
+          }
+
+          tx.set(logRef, {
+            userId,
+            amount: value,
+            previousCredit: current,
+            newCredit,
+            note: String(note || "").slice(0, 200),
+            adminId: authCheck.user.id,
+            source: "admin_panel",
+            timeStamp: FieldValue.serverTimestamp(),
+          });
+        });
+
+        return NextResponse.json({
+          success: true,
+          message: `Added ₹${value} to ${displayName(target)}`,
+          credit: newCredit,
         });
       }
 

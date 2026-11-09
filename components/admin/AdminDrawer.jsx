@@ -10,13 +10,18 @@ import {
   HiMinus,
   HiOutlineWrenchScrewdriver,
   HiOutlineCheckCircle,
+  HiOutlineBanknotes,
 } from "react-icons/hi2";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function AdminDrawer({ isOpen, onClose, onRefreshData }) {
   const [loading, setLoading] = useState(false);
   const [adminData, setAdminData] = useState({ products: [], maintenance: false });
-  const [activeTab, setActiveTab] = useState("overview"); // "overview" | "add"
+  const [activeTab, setActiveTab] = useState("overview"); // "overview" | "add" | "credits"
+  const [users, setUsers] = useState([]);
+  const [userQuery, setUserQuery] = useState("");
+  const [creditInputs, setCreditInputs] = useState({});
+  const [creditBusy, setCreditBusy] = useState(null);
   const [form, setForm] = useState({
     name: "",
     subtitle: "",
@@ -57,6 +62,65 @@ export default function AdminDrawer({ isOpen, onClose, onRefreshData }) {
       fetchAdminData();
     }
   }, [isOpen]);
+
+  const fetchUsers = async (query = userQuery) => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "list_users", payload: { query } }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUsers(data.users || []);
+      } else {
+        toast({ title: "Could not load users", description: data.error, variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && activeTab === "credits") {
+      fetchUsers();
+    }
+  }, [isOpen, activeTab]);
+
+  const handleAddCredits = async (u) => {
+    const amount = Number(creditInputs[u.id]);
+    if (!Number.isInteger(amount) || amount < 1) {
+      toast({ title: "Invalid amount", description: "Enter a whole number of rupees.", variant: "destructive" });
+      return;
+    }
+    if (!window.confirm(`Add ₹${amount} to ${u.name} (${u.email})?`)) return;
+
+    setCreditBusy(u.id);
+    try {
+      const res = await fetch("/api/admin/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "add_credits", payload: { userId: u.id, amount } }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUsers((prev) =>
+          prev.map((x) => (x.id === u.id ? { ...x, credit: data.credit, hasWallet: true } : x)),
+        );
+        setCreditInputs((prev) => ({ ...prev, [u.id]: "" }));
+        toast({ title: "Credits added", description: data.message, className: "bg-green-600 text-white" });
+      } else {
+        toast({ title: "Failed", description: data.error, variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setCreditBusy(null);
+    }
+  };
 
   // 1-Click Database Seeding
   const handleSeed = async () => {
@@ -263,6 +327,16 @@ export default function AdminDrawer({ isOpen, onClose, onRefreshData }) {
               >
                 + Add Snack
               </button>
+              <button
+                onClick={() => setActiveTab("credits")}
+                className={`pb-2.5 px-3 text-sm font-medium border-b-2 transition ${
+                  activeTab === "credits"
+                    ? "border-yellow-400 text-yellow-400"
+                    : "border-transparent text-neutral-400 hover:text-white"
+                }`}
+              >
+                Credits
+              </button>
             </div>
 
             {/* Body */}
@@ -442,6 +516,84 @@ export default function AdminDrawer({ isOpen, onClose, onRefreshData }) {
                     )}
                   </div>
                 </>
+              ) : activeTab === "credits" ? (
+                /* User Wallet Credits */
+                <div className="space-y-3">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      fetchUsers(userQuery);
+                    }}
+                    className="flex gap-2"
+                  >
+                    <input
+                      type="text"
+                      placeholder="Search name or email"
+                      value={userQuery}
+                      onChange={(e) => setUserQuery(e.target.value)}
+                      className="flex-1 bg-dark-200 rounded-lg p-2.5 text-sm border border-neutral-700 focus:border-yellow-400 outline-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="px-3 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition"
+                    >
+                      <HiArrowPath size={16} className={loading ? "animate-spin" : ""} />
+                    </button>
+                  </form>
+                  <p className="text-[11px] text-neutral-500">
+                    Everyone who has signed in with Clerk, most recent first. Users without a wallet get one on their first top-up.
+                  </p>
+
+                  {users.length === 0 ? (
+                    <div className="text-center py-8 text-neutral-500 text-sm">
+                      {loading ? "Loading users..." : "No users found."}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {users.map((u) => (
+                        <div
+                          key={u.id}
+                          className="rounded-lg bg-dark-200 p-3 border border-neutral-800 space-y-2"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-white truncate">{u.name}</p>
+                              <p className="text-xs text-neutral-400 truncate">{u.email}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-sm font-mono font-bold text-emerald-400">₹{u.credit}</p>
+                              {!u.hasWallet && (
+                                <span className="text-[10px] text-amber-300">no wallet yet</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              placeholder="₹ amount"
+                              value={creditInputs[u.id] ?? ""}
+                              onChange={(e) =>
+                                setCreditInputs((prev) => ({ ...prev, [u.id]: e.target.value }))
+                              }
+                              className="flex-1 min-w-0 bg-dark-100 rounded-lg p-2 text-sm border border-neutral-700 focus:border-yellow-400 outline-none"
+                            />
+                            <button
+                              onClick={() => handleAddCredits(u)}
+                              disabled={creditBusy === u.id}
+                              className="flex items-center gap-1 px-3 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-dark-200 font-bold text-xs transition disabled:opacity-50"
+                            >
+                              <HiOutlineBanknotes size={16} />
+                              {creditBusy === u.id ? "Adding..." : "Add"}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : (
                 /* Add Snack Form */
                 <form onSubmit={handleAddProduct} className="space-y-4">
