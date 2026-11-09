@@ -2,8 +2,6 @@ import {
   clerkMiddleware,
   createRouteMatcher,
 } from "@clerk/nextjs/server";
-import dotenv from "dotenv";
-dotenv.config();
 
 const isProtectedRoute = createRouteMatcher([
   "/",
@@ -11,19 +9,25 @@ const isProtectedRoute = createRouteMatcher([
   "/orders(.*)",
 ]);
 
-export default clerkMiddleware(
-  async (auth, req) => {
-    if (isProtectedRoute(req)) {
-      await auth.protect();
-    }
-  },
-  {
-    debug: true,
-    authorizedParties: [
-      process.env.DOMAIN_URL,
-    ],
+// Node-style .env loaders do not exist in the Edge runtime and can crash the
+// middleware bundle (node:fs is unavailable). Next.js already loads
+// .env/.env.local into process.env for middleware, so no dotenv is needed.
+const authorizedParties = process.env.DOMAIN_URL
+  ? [process.env.DOMAIN_URL]
+  : [];
+// An [undefined] entry silently disables authorized-party validation, so only
+// pass the option when the domain is actually configured. Never enable Clerk's
+// debug logging in production - it dumps sensitive request/token data.
+const options = {
+  ...(process.env.NODE_ENV !== "production" && { debug: true }),
+  ...(authorizedParties.length > 0 && { authorizedParties }),
+};
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) {
+    await auth.protect();
   }
-);
+}, options);
 
 export const config = {
   matcher: [
