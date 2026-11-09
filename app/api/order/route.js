@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { nanoid } from "nanoid";
 import { adminDb } from "@/firebase/admin";
 import { isMaintenanceMode, maintenanceResponse } from "@/lib/maintenance";
+import { ensureUserDoc } from "@/lib/ensureUser";
 
 // Configurable gateway endpoint supporting local dev, subdomains, Docker, and remote production hosting
 const DEFAULT_GATEWAY_URL = (
@@ -89,6 +90,14 @@ export async function POST(request) {
     );
   }
   const currency = "INR";
+  // The webhook credits users/{userId}; make sure it exists before any money moves
+  try {
+    await ensureUserDoc(userId);
+  } catch (err) {
+    console.error("Could not ensure user document:", err.message);
+    return NextResponse.json({ error: "Could not load your wallet. Please try again." }, { status: 500 });
+  }
+
   const orderId = `WAL-${nanoid(8)}`;
   const returnUrl = `${request.headers.get("origin") || ""}/`;
 

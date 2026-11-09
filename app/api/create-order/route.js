@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { auth } from "@clerk/nextjs/server";
 import { isMaintenanceMode, maintenanceResponse } from "@/lib/maintenance";
+import { ensureUserDoc } from "@/lib/ensureUser";
 
 class OrderError extends Error {
   constructor(code, message) {
@@ -28,8 +29,18 @@ export async function POST(req) {
 
   if (await isMaintenanceMode()) return maintenanceResponse();
 
+  let body;
   try {
-    const { products } = await req.json();
+    body = await req.json();
+  } catch {
+    return NextResponse.json(
+      { success: false, error: "Invalid JSON body" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const { products } = body || {};
 
     if (!Array.isArray(products) || products.length === 0) {
       return NextResponse.json(
@@ -51,6 +62,7 @@ export async function POST(req) {
       wanted.set(p.productId, (wanted.get(p.productId) || 0) + count);
     }
 
+    await ensureUserDoc(userId);
     const orderId = nanoid();
     let total = 0;
 
