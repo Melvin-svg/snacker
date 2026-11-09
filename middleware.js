@@ -23,9 +23,10 @@ const options = {
   ...(authorizedParties.length > 0 && { authorizedParties }),
 };
 
-export default clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware((auth, req) => {
+  // @clerk/nextjs v5: auth is a function. (auth.protect() only exists in v6+.)
   if (isProtectedRoute(req)) {
-    await auth.protect();
+    auth().protect();
   }
 }, options);
 
